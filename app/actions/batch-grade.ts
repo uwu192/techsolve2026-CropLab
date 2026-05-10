@@ -6,11 +6,9 @@ import { inngest } from "@/inngest/client";
 export async function startBatchGrading(
   courseId: string,
   courseWorkId: string,
-  submissions: { studentId: string; driveFileIds: string[]; classroomSubId: string }[],
+  submissions: { studentId: string; studentName: string; studentEmail: string; driveFileIds: string[]; classroomSubId: string }[],
   rubric: string
 ): Promise<{ queued: number; error?: string }> {
-  console.log("[startBatchGrading] Reached", { subCount: submissions.length });
-  
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -24,6 +22,8 @@ export async function startBatchGrading(
         course_id: courseId,
         assignment_id: courseWorkId,
         student_id: sub.studentId,
+        student_name: sub.studentName,
+        student_email: sub.studentEmail,
         classroom_submission_id: sub.classroomSubId,
         rubric: rubric.trim(),
         status: "PENDING",
@@ -33,11 +33,10 @@ export async function startBatchGrading(
         suggested_grade: null,
         rubric_alignment_score: null,
         is_uncertain: false,
-        error_message: null
+        error_message: null,
+        drive_file_id: sub.driveFileIds[0],
+        drive_file_ids: sub.driveFileIds
       };
-
-      payload.drive_file_id = sub.driveFileIds[0];
-      payload.drive_file_ids = sub.driveFileIds;
 
       const { data: row, error } = await supabase
         .from("submissions")
@@ -46,50 +45,26 @@ export async function startBatchGrading(
         .single();
 
       if (error) {
-        console.error("[startBatchGrading] Supabase Error:", error.message);
-        if (error.message.includes("drive_file_ids")) {
-          delete payload.drive_file_ids;
-          const { data: retryRow, error: retryError } = await supabase
-            .from("submissions")
-            .upsert(payload, { onConflict: "classroom_submission_id" })
-            .select()
-            .single();
-          
-          if (retryError) throw new Error(retryError.message);
-          
-          await inngest.send({
-            name: "submissions/process",
-            data: {
-              submissionId: retryRow.id,
-              driveFileIds: sub.driveFileIds,
-              teacherId: user.id,
-              rubric: rubric.trim(),
-            },
-          });
-          queued++;
-          continue;
-        }
-        throw new Error(error.message);
+        // Fallback for missing columns
+        delete payload.student_name;
+        delete payload.student_email;
+        delete payload.drive_file_ids;
+        await supabase.from("submissions").upsert(payload, { onConflict: "classroom_submission_id" });
       }
 
-      if (!row) continue;
+      const submissionId = row?.id || (await supabase.from("submissions").select("id").eq("classroom_submission_id", sub.classroomSubId).single()).data?.id;
 
-      await inngest.send({
-        name: "submissions/process",
-        data: {
-          submissionId: row.id,
-          driveFileIds: sub.driveFileIds,
-          teacherId: user.id,
-          rubric: rubric.trim(),
-        },
-      });
-
-      queued++;
+      if (submissionId) {
+        await inngest.send({
+          name: "submissions/process",
+          data: { submissionId, driveFileIds: sub.driveFileIds, teacherId: user.id, rubric: rubric.trim() },
+        });
+        queued++;
+      }
     }
 
     return { queued };
   } catch (err: any) {
-    console.error("[startBatchGrading] Error:", err.message);
     return { queued: 0, error: err.message };
   }
 }

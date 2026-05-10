@@ -25,6 +25,8 @@ export type CourseWork = { id: string; title: string; state: string };
 export type StudentSubmission = {
   submissionId: string;
   studentId: string;
+  studentName: string;
+  studentEmail: string;
   state: string;
   driveFiles: { id: string; name: string }[];
 };
@@ -57,6 +59,19 @@ export async function getSubmissions(courseId: string, courseWorkId: string): Pr
   if (!user) throw new Error("Not authenticated");
   const at = await getAccessToken(user.id);
 
+  // Fetch Roster for names/emails
+  const studentListRes = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/students?pageSize=100`, { headers: { Authorization: `Bearer ${at}` } });
+  const studentMap: Record<string, { name: string; email: string }> = {};
+  if (studentListRes.ok) {
+    const studentJson = await studentListRes.json();
+    (studentJson.students ?? []).forEach((s: any) => {
+      studentMap[s.userId] = {
+        name: s.profile?.name?.fullName || "Unknown",
+        email: s.profile?.emailAddress || ""
+      };
+    });
+  }
+
   const res = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork/${courseWorkId}/studentSubmissions?pageSize=100`, { headers: { Authorization: `Bearer ${at}` } });
   if (!res.ok) throw new Error(`Classroom API error: ${res.status}`);
   const json = await res.json();
@@ -66,6 +81,8 @@ export async function getSubmissions(courseId: string, courseWorkId: string): Pr
     .map((s: any) => ({
       submissionId: s.id,
       studentId: s.userId,
+      studentName: studentMap[s.userId]?.name || "Unknown Student",
+      studentEmail: studentMap[s.userId]?.email || "",
       state: s.state,
       driveFiles: (s.assignmentSubmission?.attachments ?? [])
         .filter((a: any) => a.driveFile)

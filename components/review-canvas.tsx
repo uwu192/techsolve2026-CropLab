@@ -41,7 +41,7 @@ export default function ReviewCanvas({
   };
 
   const handleReject = async () => {
-    if (!confirm("Archive this draft without syncing to Classroom?")) return;
+    if (!confirm("Discard this draft?")) return;
     setIsRejecting(true);
     try {
       await rejectSubmissionDraft(submission.id);
@@ -110,7 +110,7 @@ export default function ReviewCanvas({
             {isRejecting ? "Archiving…" : "Reject draft"}
           </Button>
           <Button onClick={handleApprove} disabled={isSyncing || isRejecting}>
-            {isSyncing ? "Syncing…" : "Approve & sync to Classroom"}
+            {"Approve & Finish"}
           </Button>
         </div>
       </div>

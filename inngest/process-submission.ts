@@ -1,4 +1,4 @@
-﻿import { together } from "../lib/ai/together";
+import { together } from "../lib/ai/together";
 import { inngest } from "./client";
 import { NonRetriableError } from "inngest";
 import { generateObject } from "ai";
@@ -8,7 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { refreshGoogleAccessToken } from "../lib/google-token";
 import { z } from "zod";
 
-const aiModel = google("gemini-3-flash-preview");
+const aiModel = google("gemini-3.1-flash-lite");
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

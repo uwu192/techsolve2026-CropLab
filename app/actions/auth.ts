@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
@@ -12,10 +12,12 @@ export async function signInWithGoogle() {
     provider: "google",
     options: {
       redirectTo: `${origin}/auth/callback`,
-      scopes: "https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.profile.emails https://www.googleapis.com/auth/drive.readonly",
+      // Added coursework.me scope for writing grades
+      scopes: "https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.students https://www.googleapis.com/auth/classroom.coursework.me https://www.googleapis.com/auth/classroom.profile.emails https://www.googleapis.com/auth/drive.readonly",
       queryParams: {
         access_type: "offline",
-        prompt: "consent",
+        // Force account selection and consent every time to ensure we get a refresh_token
+        prompt: "select_account consent",
       },
     },
   });
