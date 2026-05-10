@@ -1,7 +1,7 @@
 
 🎓 CropLabs - Teacher Assistant AI
 
-**Cuộc thi:** Techsolve 2026 **Tên đội:** CropLab 
+**Cuộc thi:** Techsolve 2026 **Tên đội:** CropLabs
 
 👥 Danh sách thành viên 
 
